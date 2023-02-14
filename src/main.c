@@ -44,6 +44,12 @@ enum monitor_orientation {
         ORIENT_UNKNOWN,
 };
 
+enum wallpaper_orientation {
+        WALLPAPER_LANDSCAPE = 0,
+        WALLPAPER_PORTRAIT,
+        NUM_WALLPAPAER_ORIENTS,
+};
+
 char *wallpaper_style_strs[] = {
         [WALLPAPER_STYLE_FIT]           = "fit_no_cut",
         [WALLPAPER_STYLE_FIT_EDGE_CUT]  = "fit_edge_cut",
@@ -73,6 +79,7 @@ struct monitor {
                 uint32_t        height;
                 uint32_t        orientation;
                 uint8_t         is_primary;
+                uint8_t         is_landscape;
         } info;
 
         struct {
@@ -84,7 +91,7 @@ struct monitor {
                 uint32_t        auto_rotate;
                 int             style;
                 char           *bg_color;
-                char           *files[NUM_MONITOR_ORIENTS];
+                char           *files[NUM_WALLPAPAER_ORIENTS];
         } wallpaper;
 };
 
@@ -108,7 +115,7 @@ static struct config g_config = {
 
 static struct monitor monitors[MONITOR_COUNT_MAX];
 static jbuf_t jbuf_usrcfg;
-static char out_path[PATH_MAX] = {0 };
+static char out_path[PATH_MAX] = { 0 };
 static wchar_t out_path_w[PATH_MAX] = { 0 };
 
 opt_noarg('h', help, "This help message");
@@ -161,10 +168,8 @@ static int usrcfg_root_key_create(jbuf_t *b)
 
                                 void *source_obj = jbuf_offset_obj_open(b, "source", 0);
 
-                                jbuf_offset_add(b, strptr, "landscape_0", offsetof(struct monitor, wallpaper.files[ORIENT_0]));
-                                jbuf_offset_add(b, strptr, "landscape_180", offsetof(struct monitor, wallpaper.files[ORIENT_180]));
-                                jbuf_offset_add(b, strptr, "portrait_90", offsetof(struct monitor, wallpaper.files[ORIENT_90]));
-                                jbuf_offset_add(b, strptr, "portrait_270", offsetof(struct monitor, wallpaper.files[ORIENT_270]));
+                                jbuf_offset_add(b, strptr, "landscape", offsetof(struct monitor, wallpaper.files[WALLPAPER_LANDSCAPE]));
+                                jbuf_offset_add(b, strptr, "portrait", offsetof(struct monitor, wallpaper.files[WALLPAPER_PORTRAIT]));
 
                                 jbuf_obj_close(b, source_obj);
                         }
@@ -286,6 +291,18 @@ static int __display_info_update(uint32_t idx, DISPLAY_DEVICE *dev, DEVMODE *mod
                 m->info.is_primary = 1;
         else
                 m->info.is_primary = 0;
+
+        switch (mode->dmDisplayOrientation) {
+        case DMDO_DEFAULT:
+        case DMDO_180:
+                m->info.is_landscape = 1;
+                break;
+
+        case DMDO_90:
+        case DMDO_270:
+                m->info.is_landscape = 0;
+                break;
+        }
 
         return 0;
 }
@@ -640,58 +657,24 @@ static int wallpaper_style_center_apply(struct monitor *m, MagickWand *w)
         return 0;
 }
 
-/**
- * @return orientation available, <0 not found
- */
-static int wallpaper_auto_rotate(struct monitor *m)
-{
-        int flip_orient = ((m->info.orientation * 90 + 180) % 360) / 90;
-
-        if (flip_orient >= NUM_MONITOR_ORIENTS)
-                return -1;
-
-        // opposite orientation is preferred
-        if (m->wallpaper.files[flip_orient])
-                return flip_orient;
-
-        for (size_t i = 0; i < ARRAY_SIZE(m->wallpaper.files); i++) {
-                if (m->wallpaper.files[i])
-                        return (int)i;
-        }
-
-        return -1;
-}
-
 static int wallpaper_load(struct monitor *m, MagickWand **out)
 {
         MagickPassFail status = MagickPass;
         MagickWand *w = NULL;
         PixelWand *bg = NULL;
-        uint32_t orient = m->info.orientation;
-        int alter_orient = -1;
+        int orient = m->info.is_landscape ? WALLPAPER_LANDSCAPE : WALLPAPER_PORTRAIT;
         char *wallpaper_path;
         int err = 0;
 
         if (!m->active)
                 return -ENODATA;
 
-        if (orient >= NUM_MONITOR_ORIENTS) {
-                pr_err("unknown orientation: %u\n", orient);
-                return -EINVAL;
-        }
-
         w = NewMagickWand();
         wallpaper_path = m->wallpaper.files[orient];
 
         if (!wallpaper_path || wallpaper_path[0] == '\0') {
-                if (!m->wallpaper.auto_rotate)
-                        return -ENODATA;
-
-                alter_orient = wallpaper_auto_rotate(m);
-                if (alter_orient < 0)
-                        return -ENODATA;
-
-                wallpaper_path = m->wallpaper.files[alter_orient];
+                pr_err("wallpaper is not defined\n");
+                return -ENODATA;
         }
 
         status = MagickReadImage(w, wallpaper_path);
@@ -715,13 +698,6 @@ static int wallpaper_load(struct monitor *m, MagickWand **out)
         if (status != MagickPass) {
                 err = -EFAULT;
                 goto out_err;
-        }
-
-        if (alter_orient >= 0) {
-                int rotation = (360 - (alter_orient * 90 - orient * 90)) % 360;
-                status = MagickRotateImage(w, bg, (double)rotation);
-                if (status != MagickPass)
-                        return -EFAULT;
         }
 
         switch (m->wallpaper.style) {

@@ -2,38 +2,29 @@
     "monitor": [
         {
             "wallpaper": {
-                "auto_rotate": true,
                 "style": "fit_edge_cut",
                 "bg_color": "#000000",
                 "source": {
-                    "landscape_0": "land.png",
-                    "landscape_180": "",
-                    "portrait_90": "",
-                    "portrait_270": ""
+                    "landscape": "land.png",
+                    "portrait": ""
                 }
             }
         },
         {
             "wallpaper": {
-                "auto_rotate": true,
                 "style": "fit_edge_cut",
                 "source": {
-                    "landscape_0": "",
-                    "portrait_90": "",
-                    "landscape_180": "",
-                    "portrait_270": "portrait2.jpg"
+                    "landscape": "",
+                    "portrait": "portrait2.jpg"
                 }
             }
         },
         {
             "wallpaper": {
-                "auto_rotate": true,
                 "style": "fit_edge_cut",
                 "source": {
-                    "landscape_0": "",
-                    "portrait_90": "portrait1.jpg",
-                    "landscape_180": "",
-                    "portrait_270": ""
+                    "landscape": "",
+                    "portrait": "portrait1.jpg"
                 }
             }
         }
