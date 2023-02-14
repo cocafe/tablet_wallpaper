@@ -412,8 +412,15 @@ static void virtual_desktop_size_compute(struct rectangle *desk, struct rectangl
         }
 }
 
-static int virtual_desktop_update(struct rectangle *virtdesk)
+static void virtual_desktop_reset(void)
 {
+        memset(&virtual_desktop, 0, sizeof(virtual_desktop));
+}
+
+static int virtual_desktop_update(void)
+{
+        struct rectangle *virtdesk = &virtual_desktop;
+
         for (size_t i = 0; i < ARRAY_SIZE(monitors); i++) {
                 struct monitor *m = &monitors[i];
 
@@ -432,8 +439,10 @@ static int virtual_desktop_update(struct rectangle *virtdesk)
         return 0;
 }
 
-static int virtual_desktop_position_reposition(struct rectangle *virtdesk)
+static int virtual_desktop_position_reposition(void)
 {
+        struct rectangle *virtdesk = &virtual_desktop;
+
         if (virtdesk->height == 0 || virtdesk->width == 0)
                 return -EINVAL;
 
@@ -838,8 +847,9 @@ static int wallpaper_update(void)
         int err;
 
         display_info_update();
-        virtual_desktop_update(&virtual_desktop);
-        virtual_desktop_position_reposition(&virtual_desktop);
+        virtual_desktop_reset();
+        virtual_desktop_update();
+        virtual_desktop_position_reposition();
 
         if ((err = wallpaper_generate())) {
                 pr_err("wallpaper_generate() failed\n");
