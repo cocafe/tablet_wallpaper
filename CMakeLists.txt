@@ -92,6 +92,12 @@ add_custom_target(collect_dll
                   DEPENDS ${PROJECT_NAME}
                   )
 
+add_custom_target(strip_exe
+                  COMMAND ${MSYS2_HOME}/usr/bin/bash.exe "${PROJECT_SOURCE_DIR}/strip_exe.sh" "${PROJECT_NAME}.exe"
+                  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+                  DEPENDS ${PROJECT_NAME}
+                  )
+
 message(STATUS  "CMake Config: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C Compiler: " ${CMAKE_C_COMPILER})
 message(STATUS "C Flags: ${CMAKE_C_FLAGS}")
