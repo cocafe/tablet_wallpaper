@@ -793,7 +793,7 @@ static int wallpaper_generate(void)
 
         status = MagickWriteImage(canvas, out_path);
         if (status != MagickPass) {
-                pr_err("failed to save wallpaper image to %s\n", out_path);
+                pr_mb_err("failed to save wallpaper image to %s\n", out_path);
                 err = -EIO;
                 goto out_free_canvas;
         }
@@ -821,12 +821,12 @@ static int wallpaper_update(void)
         virtual_desktop_position_reposition();
 
         if ((err = wallpaper_generate())) {
-                pr_err("wallpaper_generate() failed\n");
+                pr_mb_err("wallpaper_generate() failed\n");
                 return err;
         }
 
         if ((err = desktop_wallpaper_set(out_path_w))) {
-                pr_err("desktop_wallpaper_set() failed\n");
+                pr_mb_err("desktop_wallpaper_set() failed\n");
                 return err;
         }
 
@@ -932,8 +932,10 @@ int wmain(int wargc, wchar_t *wargv[])
 
         logging_init();
 
-        if ((err = wchar_longopts_parse(wargc, wargv, NULL)))
+        if ((err = wchar_longopts_parse(wargc, wargv, NULL))) {
+                pr_mb_err("wchar_longopts_parse() failed, invalid option\n");
                 return err;
+        }
 
         console_init();
 
@@ -942,8 +944,10 @@ int wmain(int wargc, wchar_t *wargv[])
         else
                 logging_colored_set(1);
 
-        if ((err = usrcfg_init()))
+        if ((err = usrcfg_init())) {
+                pr_mb_err("failed to read and init config from \"%s\"\n", g_config.json_path);
                 return err;
+        }
 
         if ((err = output_path_set()))
                 goto exit_usrcfg;
