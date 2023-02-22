@@ -14,7 +14,7 @@
 #include <libjj/logging.h>
 #include <libjj/jkey.h>
 #include <libjj/iconv.h>
-#include <libjj/config_opts.h>
+#include <libjj/opts.h>
 
 #define DEFAULT_OUTPUT_FMT              "bmp"
 #define DEFAULT_JSON_PATH               "config.json"
@@ -118,14 +118,7 @@ static jbuf_t jbuf_usrcfg;
 static char out_path[PATH_MAX] = { 0 };
 static wchar_t out_path_w[PATH_MAX] = { 0 };
 
-opt_noarg('h', help, "This help message");
-opt_strbuf('c', json_path, g_config.json_path, DEFAULT_JSON_PATH, "JSON config path");
-
-static optdesc_t *opt_list[] = {
-        &opt_help,
-        &opt_json_path,
-        NULL,
-};
+lsopt_strbuf(c, json_path, g_config.json_path, sizeof(g_config.json_path), "JSON config path");
 
 static uint32_t dmdo_to_orien[] = {
         [DMDO_DEFAULT]  = ORIENT_0,
@@ -933,10 +926,21 @@ int wmain(int wargc, wchar_t *wargv[])
         HWND notify_wnd = NULL;
         int err = 0;
 
+        logging_colored_set(1);
+
         setbuf(stdout, NULL);
 
-        if ((err = wchar_longopts_parse(wargc, wargv, opt_list)))
+        logging_init();
+
+        if ((err = wchar_longopts_parse(wargc, wargv, NULL)))
                 return err;
+
+        console_init();
+
+        if (is_console_allocated())
+                logging_colored_set(0);
+        else
+                logging_colored_set(1);
 
         if ((err = usrcfg_init()))
                 return err;
@@ -960,6 +964,8 @@ exit_magick:
 
 exit_usrcfg:
         usrcfg_deinit();
+
+        logging_exit();
 
         return err;
 }
